@@ -1,0 +1,10 @@
+{
+  "axiosConfig": {
+    "baseURL": "https://embed.dev.zarbo.works",
+    "headers": {
+      "common": {
+        "Authorization": "Api-Key UURjJ3ez.7inOMuZnHNZyochLX8sapyRuuAsk5gc6"
+      }
+    }
+  }
+}
