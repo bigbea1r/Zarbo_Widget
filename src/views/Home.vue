@@ -7,7 +7,7 @@
       </div>
       <div id="createIco">
         <p>Материалы</p>
-        <button v-for="item in selectedProduct" :key="item.id" @click="selectWidget(item)">
+        <button v-for="item in selectProduct" :key="item.id" @click="selectWidget(item)">
           <img :src="item.image_min"  alt="ico">
         </button>
       </div>
@@ -34,13 +34,11 @@ export default {
       products: [],
       collection:[],
 
-      selectedCollaction: '',
-      selectedProduct: [],
-      selectedGuid: '',
-      selectedUuid: '',
-      selectedWidget: '',
-
-      selectedMaterial:'',
+      selectedCollaction: [],
+      selectedProduct: '',
+      selectedUuid: [],
+      selectedWidget: [],
+      selectProduct:[],
 
       codeMaterial: '',
       inputGuid: '',
@@ -48,122 +46,83 @@ export default {
   },
   
 
-  mounted() {
-  this.search();
+  methods: {
+ async createWidget() {
+
+//-----------------------------------Чистка------------------------------------
+this.sizeMaterials = [];
+   this.products = [];
+   this.collaction = [];
+   this.selectedCollaction = [];
+   this.selectedProduct = [];
+   this.selectedUuid = [];
+   this.selectedWidget = [];
+   this.selectProduct = [];
+   this.codeMaterial = [];
+
+   let existingIframe = document.querySelector('iframe');
+   if(existingIframe){
+     let containerElement = document.getElementById('widget');
+     let iframeElement = containerElement.getElementsByTagName('iframe')[0];
+     containerElement.removeChild(iframeElement);
+  }
+//-----------------------------------Чистка------------------------------------
+//-----------------------------------Чистка------------------------------------
+
   document.getElementById('searchInput').addEventListener('input', (event) => {
     this.inputGuid = event.target.value;
   });
-},
-  methods: {
-  //----------------------------------Коллекция-----------------------------
-  search(){},
- async createWidget() {
+//-----------------------------------Чистка------------------------------------
+//-----------------------------------Чистка------------------------------------
+
   let urlCollaction = `/api/v1/collections/`;
   let urlProduct = `/api/v1/products/?search=${this.inputGuid}&collections=${this.selectedCollaction}`; 
   let urlMaterial = `/api/v1/materials/?product=${this.selectedProduct}`
   let urlWidget = `/api/v1/widgets/?product=${this.selectedProduct}`
+//-----------------------------------Чистка------------------------------------
 
-      await linkWidget.get(urlCollaction)
-        .then((response) => {
-          this.collection = response.data
-          this.selectedCollaction = response.data.map(item => item.key);
-  //------------------------------------------------------------------------
-          console.log(response.data)
-          console.log(this.selectedCollaction)
-  //------------------------------------------------------------------------
-          });
-  //----------------------------------Коллекция-----------------------------
-  //---------------------------Поиск продукта коллекции---------------------
-    
-        await linkWidget.get(urlProduct)
-          .then(response => {
-            this.products = response.data.results;
-            this.selectedGuid = this.products.map(item => item.guid);
-            this.selectedUuid = this.products.map(item => item.uuid);
-            this.selectedProduct = this.products.map(item => item.id);
-  //------------------------------------------------------------------------ 
-            console.log(response.data)
-            console.log(this.products)
-            console.log(this.selectedGuid)
-            console.log(this.selectedUuid);
-            console.log(this.selectedProduct)
-  //------------------------------------------------------------------------
-          });
-  //---------------------------Поиск продукта коллекции---------------------
-  //---------------------------Поиск материала продукта---------------------
-      await linkWidget.get(urlMaterial)
-        .then(response => {
-          this.selectedMaterial = response.data.results.map(item => item)  
-          this.sizeMaterials = response.data.results.map(item => item)
-          this.selectedWidget = response.data.results.map(item => item.product_id);
-  //------------------------------------------------------------------------
-            console.log(this.selectedMaterial)
-            console.log(this.sizeMaterials);
-            console.log(this.selectedWidget)
-            console.log(response.data)
-  //------------------------------------------------------------------------
-        });
-  //---------------------------Поиск материала продукта---------------------
-  //-------------------------------Создание виджета-------------------------
-  await  linkWidget.get(urlWidget)
-        .then(response => {
-          this.bober = response.data.results
-          this.selectedWidget = response.data.results.map(item => item.id)
-          this.selectedProduct = response.data.results[0].product.materials.map(item=>item) 
-          console.log(response.data.results)
-          console.log(this.selectedWidget)
-          console.log(this.selectedProduct)
-          console.log(this.selectedUuid)
-          // this.selectedProduct = response.data.results.product.materials.map(item=>item)
+  try {
+//-----------------------------------Чистка------------------------------------
+        let response = await linkWidget.get(urlCollaction);
+        this.collection = response.data;
+        this.selectedCollaction = response.data.map(item => item.key);
+//-----------------------------------Чистка------------------------------------
+//-----------------------------------Чистка------------------------------------
 
+        response = await linkWidget.get(urlProduct);
+        this.products = response.data.results;
+        this.selectedUuid = this.products.map(item => item.uuid);
+        this.selectedProduct = this.products.map(item => item.id);
+//-----------------------------------Чистка------------------------------------
 
-          let iframeElement = document.createElement('iframe');
-          iframeElement.src = `${linkWidget.defaults.baseURL}/${this.selectedUuid}/${this.selectedWidget}/`;
-          iframeElement.allowFullscreen = true;
-          iframeElement.allow = 'camera; autoplay; xr-spatial-tracking';
-          const qualityKeyToFilter = 'L';
+        urlMaterial = `${linkWidget.defaults.baseURL}/api/v1/materials/?product=${this.selectedProduct}`;
+        urlWidget = `${linkWidget.defaults.baseURL}/api/v1/widgets/?product=${this.selectedProduct}`;
 
-          this.selectedProduct = this.selectedProduct.filter(item => {
+        response = await linkWidget.get(urlMaterial);
+        this.sizeMaterials = response.data.results.map(item => item);
+        this.selectedWidget = response.data.results.map(item => item.product_id);
+
+        response = await linkWidget.get(urlWidget);
+        this.selectedWidget = response.data.results.map(item => item.id);
+        this.selectProduct = response.data.results[0].product.materials.map(item => item);
+
+        let iframeElement = document.createElement('iframe');
+        iframeElement.src = `${linkWidget.defaults.baseURL}/${this.selectedUuid}/${this.selectedWidget}/`;
+        iframeElement.allowFullscreen = true;
+        iframeElement.allow = 'camera; autoplay; xr-spatial-tracking';
+        const qualityKeyToFilter = 'L';
+
+        this.selectProduct = this.selectProduct.filter(item => {
             return item.quality && item.quality.key === qualityKeyToFilter;
-          });
-          let containerElement = document.getElementById('widget');
-          containerElement.appendChild(iframeElement); 
-      console.log('Длина материала' );
-      console.log( this.sizeMaterials);
-
-      console.log('Названия продуктов' );
-      console.log( this.products);
-
-      console.log('Названия коллекций' );
-      console.log( this.collection);
-
-      console.log('API Коллекции' );
-      console.log( this.selectedCollaction);
-
-      console.log('API Продукты' );
-      console.log( this.selectedProduct);
-
-      console.log('API Артикул' );
-      console.log( this.selectedGuid);
-
-      console.log('API Уникаьный ID' );
-      console.log(this.selectedUuid);
-
-      console.log('API ID виджета' );
-      console.log(this.selectedWidget);
-
-      console.log('API Материалов' );
-      console.log(this.selectedMaterial);
-
-      console.log('Код Материала' );
-      console.log( this.codeMaterial);
-
-      console.log('Введнный Артикул' );
-      console.log( this.inputGuid);
         });
 
-    },
-  //-------------------------------Создание виджета-------------------------
+        let containerElement = document.getElementById('widget');
+        containerElement.appendChild(iframeElement);
+
+    } catch (error) {
+        console.error("Error in createWidget:", error);
+    }
+},
   selectWidget(item) {
     this.codeMaterial = item.codename;
     console.log(this.codeMaterial)
@@ -173,19 +132,6 @@ export default {
     },
   }
 }
-
-  // "embed"
-  // "фывф"
-  // "роттердам"
-  // "asdasdasdas"
-  // "арарарар"
-// "ролр"
-// "zxczxc"
-// "йарпуцшганрйгшщуца" 
-
-
-// "KAPOBA_copy"
-// "KAPOBA"
 </script>
 
 <style>
