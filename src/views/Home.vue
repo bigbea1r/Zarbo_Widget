@@ -2,142 +2,109 @@
   <div class="wrapper">
     <div class="wrapperButton">
       <div id="searchGuid">
-        <input type="text" id="searchInput" v-model="inputGuid" @keyup.enter="createWidget" >
+        <input
+          type="text"
+          id="searchInput"
+          v-model="inputGuid"
+          @keyup.enter="createWidget"
+        />
         <button type="button" @click="createWidget">Получить Виджет</button>
       </div>
       <div id="createIco">
-        <p>Материалы</p>
-        <button v-for="item in selectProduct" :key="item.id" @click="selectWidget(item)">
-          <img :src="item.image_min"  alt="ico">
+        <button v-for="item in selectMaterials"
+        :key="item.id"
+        @click="selectWidget(item)"
+        >
+          <img :src="item.image_min" alt="ico" />
         </button>
       </div>
-        
     </div>
     <div id="widget"></div>
   </div>
 </template>
 
 <script>
-import axios from 'axios'
-const linkWidget = axios.create({
-  baseURL: 'https://embed.dev.zarbo.works',
-  headers: {
-    common: {
-      'Authorization': 'Api-Key UURjJ3ez.7inOMuZnHNZyochLX8sapyRuuAsk5gc6'
-    }
-  }
-});
+import ConstructorModal from '@/class/constructor';
+import ViewModal from '@/class/viewmodal';
+import ApiRequests from '@/class/ApiRequests';  
+
 export default {
   data() {
     return {
-      sizeMaterials: [],
-      products: [],
-      collection:[],
-
-      selectedCollaction: [],
+      selectedCollactions: '',
       selectedProduct: '',
-      selectedUuid: [],
-      selectedWidget: [],
-      selectProduct:[],
-
-      codeMaterial: '',
+      selectedWidget: '',
+      selectedUuid: '',
+      selectMaterials: '',
+      sizeMaterials: '',
+      codeMaterials: '',
       inputGuid: '',
-    }
+      apiRequests: new ApiRequests(),  
+      viewModal: new ViewModal(),
+    };
   },
-  
-
   methods: {
- async createWidget() {
+    async createWidget() {
+      this.viewModal.clearWidget('iframe', 'widget');
 
-//-----------------------------------Чистка------------------------------------
-this.sizeMaterials = [];
-   this.products = [];
-   this.collaction = [];
-   this.selectedCollaction = [];
-   this.selectedProduct = [];
-   this.selectedUuid = [];
-   this.selectedWidget = [];
-   this.selectProduct = [];
-   this.codeMaterial = [];
+      try {
+        let response = await this.apiRequests.getCollaction();
+        this.selectedCollactions = this.constructorModal.setSelectedCollactions(response);
 
-   let existingIframe = document.querySelector('iframe');
-   if(existingIframe){
-     let containerElement = document.getElementById('widget');
-     let iframeElement = containerElement.getElementsByTagName('iframe')[0];
-     containerElement.removeChild(iframeElement);
-  }
-//-----------------------------------Чистка------------------------------------
-//-----------------------------------Чистка------------------------------------
+        response = await this.apiRequests.getProduct(this.inputGuid, this.selectedCollactions);
+        this.selectedProduct = this.constructorModal.setSelectedProduct(response);
+        this.selectedUuid = this.constructorModal.setSelectedUuid(response);
 
-  document.getElementById('searchInput').addEventListener('input', (event) => {
-    this.inputGuid = event.target.value;
-  });
-//-----------------------------------Чистка------------------------------------
-//-----------------------------------Чистка------------------------------------
+        response = await this.apiRequests.getMaterial(this.selectedProduct);
+        this.sizeMaterials = this.constructorModal.setSizeMaterials(response);
 
-  let urlCollaction = `/api/v1/collections/`;
-  let urlProduct = `/api/v1/products/?search=${this.inputGuid}&collections=${this.selectedCollaction}`; 
-  let urlMaterial = `/api/v1/materials/?product=${this.selectedProduct}`
-  let urlWidget = `/api/v1/widgets/?product=${this.selectedProduct}`
-//-----------------------------------Чистка------------------------------------
-
-  try {
-//-----------------------------------Чистка------------------------------------
-        let response = await linkWidget.get(urlCollaction);
-        this.collection = response.data;
-        this.selectedCollaction = response.data.map(item => item.key);
-//-----------------------------------Чистка------------------------------------
-//-----------------------------------Чистка------------------------------------
-
-        response = await linkWidget.get(urlProduct);
-        this.products = response.data.results;
-        this.selectedUuid = this.products.map(item => item.uuid);
-        this.selectedProduct = this.products.map(item => item.id);
-//-----------------------------------Чистка------------------------------------
-
-        urlMaterial = `${linkWidget.defaults.baseURL}/api/v1/materials/?product=${this.selectedProduct}`;
-        urlWidget = `${linkWidget.defaults.baseURL}/api/v1/widgets/?product=${this.selectedProduct}`;
-
-        response = await linkWidget.get(urlMaterial);
-        this.sizeMaterials = response.data.results.map(item => item);
-        this.selectedWidget = response.data.results.map(item => item.product_id);
-
-        response = await linkWidget.get(urlWidget);
-        this.selectedWidget = response.data.results.map(item => item.id);
-        this.selectProduct = response.data.results[0].product.materials.map(item => item);
+        response = await this.apiRequests.getWidget(this.selectedProduct);
+        this.selectedWidget = this.constructorModal.setSelectedWidget(response);
+        this.selectMaterials = this.viewModal.filterMaterials(
+          this.constructorModal.setSelectMaterials(response)
+        );
 
         let iframeElement = document.createElement('iframe');
-        iframeElement.src = `${linkWidget.defaults.baseURL}/${this.selectedUuid}/${this.selectedWidget}/`;
+        iframeElement.src = `${this.apiRequests.linkWidget.defaults.baseURL}/${this.selectedUuid}/${this.selectedWidget}/`;  // Access linkWidget through ApiRequests
         iframeElement.allowFullscreen = true;
         iframeElement.allow = 'camera; autoplay; xr-spatial-tracking';
-        const qualityKeyToFilter = 'L';
-
-        this.selectProduct = this.selectProduct.filter(item => {
-            return item.quality && item.quality.key === qualityKeyToFilter;
-        });
 
         let containerElement = document.getElementById('widget');
         containerElement.appendChild(iframeElement);
-
-    } catch (error) {
-        console.error("Error in createWidget:", error);
-    }
-},
-  selectWidget(item) {
-    this.codeMaterial = item.codename;
-    console.log(this.codeMaterial)
-
-    let iframeElement = document.querySelector('iframe');
-    iframeElement.src = `${linkWidget.defaults.baseURL}/${this.selectedUuid}/${this.selectedWidget}/?materialCode=${this.codeMaterial}`;
+      } catch (error) {
+        console.error('Error in createWidget:', error.message || error);
+      }
     },
-  }
-}
+    selectWidget(item) {
+      this.codeMaterials = item.codename;
+      let iframeElement = document.querySelector('iframe');
+      iframeElement.src = `${this.apiRequests.linkWidget.defaults.baseURL}/${this.selectedUuid}/${this.selectedWidget}/?materialCode=${this.codeMaterials}`;  // Access linkWidget through ApiRequests
+    },
+  },
+  created() {
+    this.constructorModal = new ConstructorModal();
+    this.viewModal = new ViewModal();
+  },
+};
+    // this.selectedCollactions = response.data.map((item) => item.key);
+    // this.selectedProduct = response.data.results.map((item) => item.id);
+    // this.selectedUuid = response.data.results.map((item) => item.uuid);
+    // this.apiRequests.setSelectedUuid(response)
+    //  this.sizeMaterials = response.data.results.map((item) => item);
+    // this.selectedWidget = response.data.results.map((item) => item.id);
+    // this.selectMaterials = response.data.results[0].product.materials.map((item) => item);
+
 </script>
 
 <style>
 #widget{
   width: 80%;
   height: 100%;
+}
+#widget iframe{
+  width: 80%;
+  height: 100%;
+  border: none;
 }
 .wrapper{
   width: 100%;
@@ -173,10 +140,10 @@ input, button {
   border-radius: 7px;
 }
 #createIco button{
-padding: 0px;
-background-color: white;
-color: black;
-width:46px;
-height:46px;
+  padding: 0px;
+  background-color: white;
+  color: black;
+  width:46px;
+  height:46px;
 }
 </style>
